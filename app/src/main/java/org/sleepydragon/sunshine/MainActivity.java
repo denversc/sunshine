@@ -1,9 +1,13 @@
 package org.sleepydragon.sunshine;
 
+import static org.sleepydragon.sunshine.Utils.LOG_TAG;
+
 import android.app.Activity;
 import android.app.ActionBar;
 import android.app.Fragment;
 import android.os.Bundle;
+import android.os.StrictMode;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -19,9 +23,12 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    private WeatherDownloadAsyncTask mWeatherDownloadAsyncTask;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setThreadPolicy();
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
             getFragmentManager().beginTransaction()
@@ -30,6 +37,33 @@ public class MainActivity extends Activity {
         }
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask();
+        mWeatherDownloadAsyncTask.execute();
+    }
+
+    @Override
+    protected void onStop() {
+        try {
+            final WeatherDownloadAsyncTask task = mWeatherDownloadAsyncTask;
+            mWeatherDownloadAsyncTask = null;
+            if (task != null) {
+                task.cancel(true);
+            }
+        } finally {
+            super.onStop();
+        }
+    }
+
+    private static void setThreadPolicy() {
+        final StrictMode.ThreadPolicy threadPolicy = new StrictMode.ThreadPolicy.Builder()
+                .detectAll()
+                .penaltyDeath()
+                .build();
+        StrictMode.setThreadPolicy(threadPolicy);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -81,5 +115,45 @@ public class MainActivity extends Activity {
             ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
             listView.setAdapter(adapter);
         }
+    }
+
+    private static class MyWeatherDownloadAsyncTask extends WeatherDownloadAsyncTask {
+
+        @Override
+        protected void onProgressUpdate(Progress... values) {
+            for (final Progress progress : values) {
+                switch (progress) {
+                    case CONNECTING:
+                        final String url = getUrl();
+                        Log.i(LOG_TAG, "WeatherDownloadAsyncTask connecting to " + url);
+                        break;
+                    case DOWNLOADING:
+                        final int numDownloadedChars = getNumDownloadedChars();
+                        Log.i(LOG_TAG, "WeatherDownloadAsyncTask downloaded " + numDownloadedChars);
+                        break;
+                }
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Result result) {
+            if (isCancelled()) {
+                Log.i(LOG_TAG, "WeatherDownloadAsyncTask download cancelled");
+            }
+            if (result == null) {
+                return;
+            }
+            switch (result) {
+                case OK:
+                    final String weatherData = getWeatherData();
+                    Log.i(LOG_TAG, "WeatherDownloadAsyncTask downloaded data: " + weatherData);
+                    break;
+                default:
+                    final String errorMessage = getErrorMessage();
+                    Log.w(LOG_TAG, "WeatherDownloadAsyncTask download failed: " + errorMessage);
+                    break;
+            }
+        }
+
     }
 }
