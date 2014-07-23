@@ -1,17 +1,12 @@
 package org.sleepydragon.sunshine;
 
-import static org.sleepydragon.sunshine.Utils.LOG_TAG;
-
 import android.app.Activity;
 import android.os.Bundle;
 import android.os.StrictMode;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
 public class MainActivity extends Activity {
-
-    private WeatherDownloadAsyncTask mWeatherDownloadAsyncTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,26 +17,6 @@ public class MainActivity extends Activity {
             getFragmentManager().beginTransaction()
                     .add(R.id.container, new ForecastFragment())
                     .commit();
-        }
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask();
-        mWeatherDownloadAsyncTask.execute();
-    }
-
-    @Override
-    protected void onStop() {
-        try {
-            final WeatherDownloadAsyncTask task = mWeatherDownloadAsyncTask;
-            mWeatherDownloadAsyncTask = null;
-            if (task != null) {
-                task.cancel(true);
-            }
-        } finally {
-            super.onStop();
         }
     }
 
@@ -71,43 +46,4 @@ public class MainActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
-    private static class MyWeatherDownloadAsyncTask extends WeatherDownloadAsyncTask {
-
-        @Override
-        protected void onProgressUpdate(Progress... values) {
-            for (final Progress progress : values) {
-                switch (progress) {
-                    case CONNECTING:
-                        final String url = getUrl();
-                        Log.i(LOG_TAG, "WeatherDownloadAsyncTask connecting to " + url);
-                        break;
-                    case DOWNLOADING:
-                        final int numDownloadedChars = getNumDownloadedChars();
-                        Log.i(LOG_TAG, "WeatherDownloadAsyncTask downloaded " + numDownloadedChars);
-                        break;
-                }
-            }
-        }
-
-        @Override
-        protected void onPostExecute(Result result) {
-            if (isCancelled()) {
-                Log.i(LOG_TAG, "WeatherDownloadAsyncTask download cancelled");
-            }
-            if (result == null) {
-                return;
-            }
-            switch (result) {
-                case OK:
-                    final String weatherData = getWeatherData();
-                    Log.i(LOG_TAG, "WeatherDownloadAsyncTask downloaded data: " + weatherData);
-                    break;
-                default:
-                    final String errorMessage = getErrorMessage();
-                    Log.w(LOG_TAG, "WeatherDownloadAsyncTask download failed: " + errorMessage);
-                    break;
-            }
-        }
-
-    }
 }
