@@ -24,6 +24,7 @@ import static org.sleepydragon.sunshine.Utils.LOG_TAG;
 public class ForecastFragment extends Fragment {
 
     private WeatherDownloadAsyncTask mWeatherDownloadAsyncTask;
+    private ArrayAdapter<String> mForecastAdapter;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -34,7 +35,13 @@ public class ForecastFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_forecast, container, false);
+        final View rootView = inflater.inflate(R.layout.fragment_forecast, container, false);
+
+        mForecastAdapter = new ArrayAdapter<String>(getActivity(),
+                R.layout.list_item_forecast, R.id.list_item_forecast_textview);
+        final ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
+        listView.setAdapter(mForecastAdapter);
+
         return rootView;
     }
 
@@ -72,17 +79,8 @@ public class ForecastFragment extends Fragment {
     }
 
     private void setWeatherForecast(String[] weatherForecasts) {
-        final List<String> items = new ArrayList<>(weatherForecasts.length);
-        for (final String weatherForecast : weatherForecasts) {
-            items.add(weatherForecast);
-        }
-
-        final ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(),
-                R.layout.list_item_forecast, R.id.list_item_forecast_textview, items);
-
-        final View rootView = getView();
-        final ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
-        listView.setAdapter(adapter);
+        mForecastAdapter.clear();
+        mForecastAdapter.addAll(weatherForecasts);
     }
 
     private class MyWeatherDownloadAsyncTask extends WeatherDownloadAsyncTask {
