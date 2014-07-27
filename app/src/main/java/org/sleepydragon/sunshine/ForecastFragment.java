@@ -62,7 +62,7 @@ public class ForecastFragment extends Fragment {
         switch (item.getItemId()) {
             case R.id.action_refresh:
                 if (mWeatherDownloadAsyncTask == null) {
-                    mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask();
+                    mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask("Kitchener,ca");
                     mWeatherDownloadAsyncTask.execute();
                 }
                 return true;
@@ -88,6 +88,10 @@ public class ForecastFragment extends Fragment {
     }
 
     private class MyWeatherDownloadAsyncTask extends WeatherDownloadAsyncTask {
+
+        public MyWeatherDownloadAsyncTask(String location) {
+            super(location);
+        }
 
         @Override
         protected void onProgressUpdate(Progress... values) {

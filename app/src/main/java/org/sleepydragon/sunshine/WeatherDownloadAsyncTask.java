@@ -17,11 +17,17 @@ import java.net.URLConnection;
 public class WeatherDownloadAsyncTask extends
         AsyncTask<Void, WeatherDownloadAsyncTask.Progress, WeatherDownloadAsyncTask.Result> {
 
+    private final String mLocation;
+
     private String mErrorMessage;
     private String mWeatherData;
     private int mNumDownloadedChars;
 
-    public WeatherDownloadAsyncTask() {
+    public WeatherDownloadAsyncTask(String location) {
+        if (location == null) {
+            throw new NullPointerException("location==null");
+        }
+        mLocation = location;
     }
 
     @Override
@@ -111,7 +117,7 @@ public class WeatherDownloadAsyncTask extends
      */
     public String getUrl() {
         return "http://api.openweathermap.org/data/2.5/forecast/daily?" +
-                "q=Kitchener,ca&mode=json&units=metric&cnt=7";
+                "q=" + mLocation + "&mode=json&units=metric&cnt=7";
     }
 
     /**
