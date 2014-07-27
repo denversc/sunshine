@@ -72,7 +72,7 @@ public class ForecastFragment extends Fragment {
     }
 
     private void populateListViewData(View rootView) {
-        List<String> items = new ArrayList<String>();
+        List<String> items = new ArrayList<>();
         items.add("Today - Sunny - 88 / 63");
         items.add("Tomorrow - Foggy - 70 / 46");
         items.add("Weds - Cloudy - 72 / 63");
@@ -80,7 +80,7 @@ public class ForecastFragment extends Fragment {
         items.add("Fri - Foggy - 70 / 46");
         items.add("Sat - Sunny - 76 / 68");
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(),
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(),
                 R.layout.list_item_forecast, R.id.list_item_forecast_textview, items);
 
         ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
@@ -120,8 +120,18 @@ public class ForecastFragment extends Fragment {
             }
             switch (result) {
                 case OK:
-                    final String weatherData = getWeatherData();
-                    Log.i(LOG_TAG, "WeatherDownloadAsyncTask downloaded data: " + weatherData);
+                    final String[] weatherData = getWeatherData();
+                    if (weatherData == null) {
+                        Log.i(LOG_TAG, "WeatherDownloadAsyncTask downloaded data: null");
+                    } else {
+                        Log.i(LOG_TAG, "WeatherDownloadAsyncTask downloaded data: " +
+                                weatherData.length + " days");
+                        for (int i=0; i<weatherData.length; i++) {
+                            final String day = weatherData[i];
+                            Log.i(LOG_TAG, "WeatherDownloadAsyncTask downloaded data day " + (i+1)
+                                    + ": " + day);
+                        }
+                    }
                     break;
                 default:
                     final String errorMessage = getErrorMessage();

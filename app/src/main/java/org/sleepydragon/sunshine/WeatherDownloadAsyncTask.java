@@ -3,6 +3,10 @@ package org.sleepydragon.sunshine;
 import android.net.Uri;
 import android.os.AsyncTask;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -10,6 +14,10 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Downloads the weather data from the Internet.
@@ -20,7 +28,7 @@ public class WeatherDownloadAsyncTask extends
     private final String mLocation;
 
     private String mErrorMessage;
-    private String mWeatherData;
+    private String[] mWeatherData;
     private int mNumDownloadedChars;
 
     public WeatherDownloadAsyncTask(String location) {
@@ -55,8 +63,7 @@ public class WeatherDownloadAsyncTask extends
         }
 
         final HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
-        final Result result = doInBackground(httpURLConnection);
-        return result;
+        return doInBackground(httpURLConnection);
     }
 
     private Result doInBackground(HttpURLConnection con) {
@@ -107,7 +114,18 @@ public class WeatherDownloadAsyncTask extends
             sb.append(buf, 0, readCount);
         }
 
-        mWeatherData = sb.toString();
+        if (isCancelled()) {
+            return null;
+        }
+
+        final String weatherDataJSONEncoded = sb.toString();
+        try {
+            mWeatherData = parseJSONEncodedWeatherData(weatherDataJSONEncoded);
+        } catch (JSONException e) {
+            mErrorMessage = e.getMessage();
+            return Result.INVALID_DATA;
+        }
+
         return Result.OK;
     }
 
@@ -125,8 +143,70 @@ public class WeatherDownloadAsyncTask extends
         builder.appendQueryParameter("units", "metric");
         builder.appendQueryParameter("cnt", "7");
         final Uri uri = builder.build();
-        final String url = uri.toString();
-        return url;
+        return uri.toString();
+    }
+
+    /**
+     * The date/time conversion code is going to be moved outside the AsyncTask later,
+     * so for convenience we're breaking it out into its own method now.
+     */
+    private static String getReadableDateString(long time){
+        // Because the API returns a unix timestamp (measured in seconds),
+        // it must be converted to milliseconds in order to be converted to valid date.
+        final Date date = new Date(time * 1000);
+        final SimpleDateFormat format = new SimpleDateFormat("E, MMM d");
+        return format.format(date);
+    }
+
+    /**
+     * Prepare the weather high/lows for presentation.
+     */
+    private static String formatHighLows(double high, double low) {
+        // For presentation, assume the user doesn't care about tenths of a degree.
+        final long roundedHigh = Math.round(high);
+        final long roundedLow = Math.round(low);
+        return roundedHigh + "/" + roundedLow;
+    }
+
+    /**
+     * Take the String representing the complete forecast in JSON Format and
+     * pull out the data we need to construct the Strings needed for the wireframes.
+     *
+     * Fortunately parsing is easy:  constructor takes the JSON string and converts it
+     * into an Object hierarchy for us.
+     */
+    private static String[] parseJSONEncodedWeatherData(String forecastJsonStr)
+            throws JSONException {
+        final JSONObject forecastJson = new JSONObject(forecastJsonStr);
+        final JSONArray weatherArray = forecastJson.getJSONArray("list");
+
+        final List<String> resultStrs = new ArrayList<>();
+        for(int i = 0; i < weatherArray.length(); i++) {
+            // Get the JSON object representing the day
+            final JSONObject dayForecast = weatherArray.getJSONObject(i);
+
+            // The date/time is returned as a long.  We need to convert that
+            // into something human-readable, since most people won't read "1400356800" as
+            // "this saturday".
+            final long dateTime = dayForecast.getLong("dt");
+            final String day = getReadableDateString(dateTime);
+
+            // description is in a child array called "weather", which is 1 element long.
+            final JSONObject weatherObject = dayForecast.getJSONArray("weather").getJSONObject(0);
+            final String description = weatherObject.getString("main");
+
+            // Temperatures are in a child object called "temp".  Try not to name variables
+            // "temp" when working with temperature.  It confuses everybody.
+            final JSONObject temperatureObject = dayForecast.getJSONObject("temp");
+            final double high = temperatureObject.getDouble("max");
+            final double low = temperatureObject.getDouble("min");
+
+            final String highAndLow = formatHighLows(high, low);
+            final String resultStr = day + " - " + description + " - " + highAndLow;
+            resultStrs.add(resultStr);
+        }
+
+        return resultStrs.toArray(new String[resultStrs.size()]);
     }
 
     /**
@@ -151,7 +231,7 @@ public class WeatherDownloadAsyncTask extends
      * @return the weather data downloaded by doInBackground(); returns null if no weather data
      * was downloaded.
      */
-    public String getWeatherData() {
+    public String[] getWeatherData() {
         return mWeatherData;
     }
 
@@ -179,6 +259,7 @@ public class WeatherDownloadAsyncTask extends
         INVALID_URL,
         CONNECT_FAILED,
         DOWNLOAD_FAILED,
+        INVALID_DATA,
     }
 
 }
