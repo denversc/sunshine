@@ -1,8 +1,8 @@
 package org.sleepydragon.sunshine;
 
+import android.net.Uri;
 import android.os.AsyncTask;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -116,8 +116,17 @@ public class WeatherDownloadAsyncTask extends
      * @return the URL that will be used to download the weather data; never returns null.
      */
     public String getUrl() {
-        return "http://api.openweathermap.org/data/2.5/forecast/daily?" +
-                "q=" + mLocation + "&mode=json&units=metric&cnt=7";
+        final Uri.Builder builder = new Uri.Builder();
+        builder.scheme("http");
+        builder.authority("api.openweathermap.org");
+        builder.path("/data/2.5/forecast/daily");
+        builder.appendQueryParameter("q", mLocation);
+        builder.appendQueryParameter("mode", "json");
+        builder.appendQueryParameter("units", "metric");
+        builder.appendQueryParameter("cnt", "7");
+        final Uri uri = builder.build();
+        final String url = uri.toString();
+        return url;
     }
 
     /**
