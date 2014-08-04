@@ -29,7 +29,6 @@ public class ForecastFragment extends Fragment {
     private WeatherDownloadAsyncTask mWeatherDownloadAsyncTask;
     private ArrayAdapter<String> mForecastAdapter;
     private SharedPreferences mSharedPreferences;
-    private boolean mRefreshQueued;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -85,7 +84,6 @@ public class ForecastFragment extends Fragment {
     private void onRefreshOptionItemSelected() {
         if (mWeatherDownloadAsyncTask == null) {
             if (mSharedPreferences == null) {
-                mRefreshQueued = true;
                 return;
             }
             final String locationKey = getString(R.string.pref_location_key);
@@ -164,10 +162,8 @@ public class ForecastFragment extends Fragment {
         }
 
         @Override
-        protected void onPostExecute(Void aVoid) {
-            if (mRefreshQueued) {
-                onRefreshOptionItemSelected();
-            }
+        protected void onPostExecute(Void result) {
+           onRefreshOptionItemSelected();
         }
     }
 }
