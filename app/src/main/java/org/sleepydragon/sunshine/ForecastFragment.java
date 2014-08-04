@@ -2,7 +2,10 @@ package org.sleepydragon.sunshine;
 
 import android.app.Fragment;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -16,9 +19,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.sleepydragon.sunshine.Utils.LOG_TAG;
 
 /**
@@ -28,11 +28,14 @@ public class ForecastFragment extends Fragment {
 
     private WeatherDownloadAsyncTask mWeatherDownloadAsyncTask;
     private ArrayAdapter<String> mForecastAdapter;
+    private SharedPreferences mSharedPreferences;
+    private boolean mRefreshQueued;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
+        new LoadSharedPreferencesAsyncTask().execute();
     }
 
     @Override
@@ -72,13 +75,23 @@ public class ForecastFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_refresh:
-                if (mWeatherDownloadAsyncTask == null) {
-                    mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask("Kitchener,ca");
-                    mWeatherDownloadAsyncTask.execute();
-                }
+                onRefreshOptionItemSelected();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void onRefreshOptionItemSelected() {
+        if (mWeatherDownloadAsyncTask == null) {
+            if (mSharedPreferences == null) {
+                mRefreshQueued = true;
+                return;
+            }
+            final String locationKey = getString(R.string.pref_location_key);
+            final String location = mSharedPreferences.getString(locationKey, "Kitchener,on");
+            mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask(location);
+            mWeatherDownloadAsyncTask.execute();
         }
     }
 
@@ -139,6 +152,22 @@ public class ForecastFragment extends Fragment {
             final Intent intent = new Intent(getActivity(), DetailActivity.class);
             intent.putExtra(Intent.EXTRA_TEXT, forecastText);
             startActivity(intent);
+        }
+    }
+
+    private class LoadSharedPreferencesAsyncTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            if (mRefreshQueued) {
+                onRefreshOptionItemSelected();
+            }
         }
     }
 }
