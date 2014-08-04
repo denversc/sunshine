@@ -10,7 +10,8 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme" >
+        android:theme="@style/AppTheme"
+        >
 
         <activity
             android:name=".MainActivity"
@@ -24,11 +25,20 @@
 
         <activity
             android:name=".DetailActivity"
-            android:label="@string/detail_label"
-            android:parentActivityName=".MainActivity"
             android:exported="false"
+            android:label="@string/title_activity_detail"
+            android:parentActivityName=".MainActivity"
             >
         </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_settings"
+            android:parentActivityName=".MainActivity"
+            >
+        </activity>
+
     </application>
 
 </manifest>
