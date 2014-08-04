@@ -26,16 +26,20 @@ public class WeatherDownloadAsyncTask extends
         AsyncTask<Void, WeatherDownloadAsyncTask.Progress, WeatherDownloadAsyncTask.Result> {
 
     private final String mLocation;
+    private final MeasurementUnits mMeasurementUnits;
 
     private String mErrorMessage;
     private String[] mWeatherData;
     private int mNumDownloadedChars;
 
-    public WeatherDownloadAsyncTask(String location) {
+    public WeatherDownloadAsyncTask(String location, MeasurementUnits measurementUnits) {
         if (location == null) {
             throw new NullPointerException("location==null");
+        } else if (measurementUnits == null) {
+            throw new NullPointerException("measurementUnits==null");
         }
         mLocation = location;
+        mMeasurementUnits = measurementUnits;
     }
 
     @Override
@@ -161,11 +165,29 @@ public class WeatherDownloadAsyncTask extends
     /**
      * Prepare the weather high/lows for presentation.
      */
-    private static String formatHighLows(double high, double low) {
+    private String formatHighLows(double high, double low) {
         // For presentation, assume the user doesn't care about tenths of a degree.
         final long roundedHigh = Math.round(high);
         final long roundedLow = Math.round(low);
-        return roundedHigh + "/" + roundedLow;
+        return formatTemperature(roundedHigh) + "/" + formatTemperature(roundedLow);
+    }
+
+    private String formatTemperature(long tempInCelsius) {
+        final String suffix;
+        final long value;
+        switch (mMeasurementUnits) {
+            case METRIC:
+                suffix = "C";
+                value = tempInCelsius;
+                break;
+            case IMPERIAL:
+                suffix = "F";
+                value = (tempInCelsius * 9 / 5) + 32;
+                break;
+            default:
+                throw new RuntimeException("unsupported measurement units: " + mMeasurementUnits);
+        }
+        return value + "\u00B0" + suffix;
     }
 
     /**
@@ -175,8 +197,7 @@ public class WeatherDownloadAsyncTask extends
      * Fortunately parsing is easy:  constructor takes the JSON string and converts it
      * into an Object hierarchy for us.
      */
-    private static String[] parseJSONEncodedWeatherData(String forecastJsonStr)
-            throws JSONException {
+    private String[] parseJSONEncodedWeatherData(String forecastJsonStr) throws JSONException {
         final JSONObject forecastJson = new JSONObject(forecastJsonStr);
         final JSONArray weatherArray = forecastJson.getJSONArray("list");
 

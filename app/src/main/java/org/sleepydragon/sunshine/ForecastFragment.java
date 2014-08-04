@@ -26,15 +26,26 @@ import static org.sleepydragon.sunshine.Utils.LOG_TAG;
  */
 public class ForecastFragment extends Fragment {
 
+    private final MyOnSharedPreferenceChangeListener mOnSharedPreferenceChangeListener;
+
     private WeatherDownloadAsyncTask mWeatherDownloadAsyncTask;
+    private LoadSharedPreferencesAsyncTask mLoadSharedPreferencesAsyncTask;
     private ArrayAdapter<String> mForecastAdapter;
     private SharedPreferences mSharedPreferences;
+    private MeasurementUnits mMeasurementUnits;
+    private String mMeasurementUnitsKey;
+
+    public ForecastFragment() {
+        mOnSharedPreferenceChangeListener = new MyOnSharedPreferenceChangeListener();
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
-        new LoadSharedPreferencesAsyncTask().execute();
+        mMeasurementUnitsKey = getString(R.string.pref_units_key);
+        mLoadSharedPreferencesAsyncTask = new LoadSharedPreferencesAsyncTask();
+        mLoadSharedPreferencesAsyncTask.execute();
     }
 
     @Override
@@ -54,10 +65,18 @@ public class ForecastFragment extends Fragment {
     @Override
     public void onDestroy() {
         try {
-            final WeatherDownloadAsyncTask task = mWeatherDownloadAsyncTask;
+            final WeatherDownloadAsyncTask weatherDownloadTask = mWeatherDownloadAsyncTask;
+            final LoadSharedPreferencesAsyncTask loadSharedPrefsTask = mLoadSharedPreferencesAsyncTask;
             mWeatherDownloadAsyncTask = null;
-            if (task != null) {
-                task.cancel(true);
+            mLoadSharedPreferencesAsyncTask = null;
+            if (weatherDownloadTask != null) {
+                weatherDownloadTask.cancel(true);
+            }
+            if (loadSharedPrefsTask != null) {
+                loadSharedPrefsTask.cancel(true);
+            }
+            if (mSharedPreferences != null) {
+                mSharedPreferences.unregisterOnSharedPreferenceChangeListener(mOnSharedPreferenceChangeListener);
             }
         } finally {
             super.onDestroy();
@@ -88,7 +107,7 @@ public class ForecastFragment extends Fragment {
             }
             final String locationKey = getString(R.string.pref_location_key);
             final String location = mSharedPreferences.getString(locationKey, "Kitchener,on");
-            mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask(location);
+            mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask(location, mMeasurementUnits);
             mWeatherDownloadAsyncTask.execute();
         }
     }
@@ -100,8 +119,8 @@ public class ForecastFragment extends Fragment {
 
     private class MyWeatherDownloadAsyncTask extends WeatherDownloadAsyncTask {
 
-        public MyWeatherDownloadAsyncTask(String location) {
-            super(location);
+        public MyWeatherDownloadAsyncTask(String location, MeasurementUnits measurementUnits) {
+            super(location, measurementUnits);
         }
 
         @Override
@@ -169,8 +188,33 @@ public class ForecastFragment extends Fragment {
 
         @Override
         protected void onPostExecute(SharedPreferences prefs) {
+            if (mLoadSharedPreferencesAsyncTask == null) {
+                return;
+            }
+            mLoadSharedPreferencesAsyncTask = null;
             mSharedPreferences = prefs;
-            onRefreshOptionItemSelected();
+            prefs.registerOnSharedPreferenceChangeListener(mOnSharedPreferenceChangeListener);
+            mOnSharedPreferenceChangeListener.onSharedPreferenceChanged(prefs, mMeasurementUnitsKey);
+        }
+    }
+
+    private class MyOnSharedPreferenceChangeListener
+            implements SharedPreferences.OnSharedPreferenceChangeListener {
+        @Override
+        public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
+            if (key.equals(mMeasurementUnitsKey)) {
+                final String value = prefs.getString(key, null);
+                final String valueImperial = getString(R.string.prefs_units_entry_value_imperial);
+                final MeasurementUnits origMeasurementUnits = mMeasurementUnits;
+                if (valueImperial.equals(value)) {
+                    mMeasurementUnits = MeasurementUnits.IMPERIAL;
+                } else {
+                    mMeasurementUnits = MeasurementUnits.METRIC;
+                }
+                if (mMeasurementUnits != origMeasurementUnits) {
+                    onRefreshOptionItemSelected();
+                }
+            }
         }
     }
 }
