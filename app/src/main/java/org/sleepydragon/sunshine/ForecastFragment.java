@@ -1,6 +1,7 @@
 package org.sleepydragon.sunshine;
 
 import android.app.Fragment;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -135,9 +136,9 @@ public class ForecastFragment extends Fragment {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
             final CharSequence forecastText = ((TextView) view).getText();
-            final String toastText = "List item clicked: position=" + position
-                    + " id=" + id + " text=\"" + forecastText + "\"";
-            Toast.makeText(getActivity(), toastText, Toast.LENGTH_LONG).show();
+            final Intent intent = new Intent(getActivity(), DetailActivity.class);
+            intent.putExtra(Intent.EXTRA_TEXT, forecastText);
+            startActivity(intent);
         }
     }
 }
