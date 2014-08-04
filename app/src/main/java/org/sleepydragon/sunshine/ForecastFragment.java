@@ -105,6 +105,12 @@ public class ForecastFragment extends Fragment {
         }
 
         @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            getActivity().setProgressBarIndeterminateVisibility(true);
+        }
+
+        @Override
         protected void onProgressUpdate(Progress... values) {
             for (final Progress progress : values) {
                 switch (progress) {
@@ -119,6 +125,7 @@ public class ForecastFragment extends Fragment {
 
         @Override
         protected void onPostExecute(Result result) {
+            getActivity().setProgressBarIndeterminateVisibility(false);
             mWeatherDownloadAsyncTask = null;
             if (result == null || isCancelled()) {
                 Log.i(LOG_TAG, "WeatherDownloadAsyncTask download cancelled");
@@ -153,17 +160,17 @@ public class ForecastFragment extends Fragment {
         }
     }
 
-    private class LoadSharedPreferencesAsyncTask extends AsyncTask<Void, Void, Void> {
+    private class LoadSharedPreferencesAsyncTask extends AsyncTask<Void, Void, SharedPreferences> {
 
         @Override
-        protected Void doInBackground(Void... params) {
-            mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
-            return null;
+        protected SharedPreferences doInBackground(Void... params) {
+            return PreferenceManager.getDefaultSharedPreferences(getActivity());
         }
 
         @Override
-        protected void onPostExecute(Void result) {
-           onRefreshOptionItemSelected();
+        protected void onPostExecute(SharedPreferences prefs) {
+            mSharedPreferences = prefs;
+            onRefreshOptionItemSelected();
         }
     }
 }
