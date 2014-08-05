@@ -34,9 +34,12 @@ public class ForecastFragment extends Fragment {
     private final MyOnSharedPreferenceChangeListener mOnSharedPreferenceChangeListener;
 
     private static final int WHAT_SHOW_MAP = 1;
+    private static final int WHAT_UPDATE_UNITS = 2;
+    private static final int WHAT_REFRESH_WEATHER_DATA = 3;
 
-    private Handler mHandler;
-    private HandlerThread mHandlerThread;
+    private Handler mMainHandler;
+    private Handler mWorkHandler;
+    private HandlerThread mWorkHandlerThread;
 
     private WeatherDownloadAsyncTask mWeatherDownloadAsyncTask;
     private LoadSharedPreferencesAsyncTask mLoadSharedPreferencesAsyncTask;
@@ -61,11 +64,13 @@ public class ForecastFragment extends Fragment {
         mLoadSharedPreferencesAsyncTask = new LoadSharedPreferencesAsyncTask();
         mLoadSharedPreferencesAsyncTask.execute();
 
-        mHandlerThread = new HandlerThread("ForecastFragment Handler Thread");
-        mHandlerThread.start();
-        final Looper handlerLooper = mHandlerThread.getLooper();
-        final Handler.Callback handlerCallback = new MyHandlerCallback();
-        mHandler = new Handler(handlerLooper, handlerCallback);
+        mWorkHandlerThread = new HandlerThread("ForecastFragment Handler Thread");
+        mWorkHandlerThread.start();
+        final Looper workHandlerLooper = mWorkHandlerThread.getLooper();
+        final Handler.Callback workHandlerCallback = new MyWorkHandlerCallback();
+        mWorkHandler = new Handler(workHandlerLooper, workHandlerCallback);
+        final Handler.Callback mainHandlerCallback = new MyMainHandlerCallback();
+        mMainHandler = new Handler(mainHandlerCallback);
     }
 
     @Override
@@ -95,8 +100,8 @@ public class ForecastFragment extends Fragment {
             if (mSharedPreferences != null) {
                 mSharedPreferences.unregisterOnSharedPreferenceChangeListener(mOnSharedPreferenceChangeListener);
             }
-            if (mHandlerThread != null) {
-                mHandlerThread.quit();
+            if (mWorkHandlerThread != null) {
+                mWorkHandlerThread.quit();
             }
         } finally {
             super.onDestroy();
@@ -138,7 +143,7 @@ public class ForecastFragment extends Fragment {
     }
 
     private void onOptionItemShowLocationOnMapSelected() {
-        mHandler.sendEmptyMessage(WHAT_SHOW_MAP);
+        mWorkHandler.sendEmptyMessage(WHAT_SHOW_MAP);
     }
 
     private void doShowLocationOnMap() {
@@ -176,6 +181,22 @@ public class ForecastFragment extends Fragment {
         }
     }
 
+    private void doUpdateUnits() {
+        if (mSharedPreferences == null) {
+            return;
+        }
+        final String value = mSharedPreferences.getString(mKeyMeasurementUnits, null);
+        final String valueImperial = getString(R.string.prefs_units_entry_value_imperial);
+        final MeasurementUnits origMeasurementUnits = mMeasurementUnits;
+        if (valueImperial.equals(value)) {
+            mMeasurementUnits = MeasurementUnits.IMPERIAL;
+        } else {
+            mMeasurementUnits = MeasurementUnits.METRIC;
+        }
+        if (mMeasurementUnits != origMeasurementUnits) {
+            mMainHandler.sendEmptyMessage(WHAT_REFRESH_WEATHER_DATA);
+        }
+    }
 
     private void setWeatherForecast(String[] weatherForecasts, LocationCoordinates locationCoordinates) {
         mLocationCoordinates = locationCoordinates;
@@ -279,17 +300,7 @@ public class ForecastFragment extends Fragment {
         @Override
         public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
             if (key.equals(mKeyMeasurementUnits)) {
-                final String value = prefs.getString(key, null);
-                final String valueImperial = getString(R.string.prefs_units_entry_value_imperial);
-                final MeasurementUnits origMeasurementUnits = mMeasurementUnits;
-                if (valueImperial.equals(value)) {
-                    mMeasurementUnits = MeasurementUnits.IMPERIAL;
-                } else {
-                    mMeasurementUnits = MeasurementUnits.METRIC;
-                }
-                if (mMeasurementUnits != origMeasurementUnits) {
-                    onOptionItemRefreshSelected(true);
-                }
+                mWorkHandler.sendEmptyMessage(WHAT_UPDATE_UNITS);
             } else if (key.equals(mKeyLocation)) {
                 onOptionItemRefreshSelected(true);
             }
@@ -311,12 +322,29 @@ public class ForecastFragment extends Fragment {
         }
     }
 
-    private class MyHandlerCallback implements Handler.Callback {
+    private class MyWorkHandlerCallback implements Handler.Callback {
         @Override
         public boolean handleMessage(Message msg) {
             switch (msg.what) {
                 case WHAT_SHOW_MAP:
                     doShowLocationOnMap();
+                    break;
+                case WHAT_UPDATE_UNITS:
+                    doUpdateUnits();
+                    break;
+                default:
+                    return false;
+            }
+            return true;
+        }
+    }
+
+    private class MyMainHandlerCallback implements Handler.Callback {
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (msg.what) {
+                case WHAT_REFRESH_WEATHER_DATA:
+                    onOptionItemRefreshSelected(true);
                     break;
                 default:
                     return false;
