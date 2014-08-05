@@ -3,8 +3,13 @@ package org.sleepydragon.sunshine;
 import android.app.Fragment;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
+import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -28,12 +33,20 @@ public class ForecastFragment extends Fragment {
 
     private final MyOnSharedPreferenceChangeListener mOnSharedPreferenceChangeListener;
 
+    private static final int WHAT_SHOW_MAP = 1;
+
+    private Handler mHandler;
+    private HandlerThread mHandlerThread;
+
     private WeatherDownloadAsyncTask mWeatherDownloadAsyncTask;
     private LoadSharedPreferencesAsyncTask mLoadSharedPreferencesAsyncTask;
     private ArrayAdapter<String> mForecastAdapter;
     private SharedPreferences mSharedPreferences;
     private MeasurementUnits mMeasurementUnits;
-    private String mMeasurementUnitsKey;
+    private String mKeyMeasurementUnits;
+    private String mKeyLocation;
+    private LocationCoordinates mLocationCoordinates;
+    private boolean mDestroyed;
 
     public ForecastFragment() {
         mOnSharedPreferenceChangeListener = new MyOnSharedPreferenceChangeListener();
@@ -43,9 +56,16 @@ public class ForecastFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
-        mMeasurementUnitsKey = getString(R.string.pref_units_key);
+        mKeyMeasurementUnits = getString(R.string.pref_units_key);
+        mKeyLocation = getString(R.string.pref_location_key);
         mLoadSharedPreferencesAsyncTask = new LoadSharedPreferencesAsyncTask();
         mLoadSharedPreferencesAsyncTask.execute();
+
+        mHandlerThread = new HandlerThread("ForecastFragment Handler Thread");
+        mHandlerThread.start();
+        final Looper handlerLooper = mHandlerThread.getLooper();
+        final Handler.Callback handlerCallback = new MyHandlerCallback();
+        mHandler = new Handler(handlerLooper, handlerCallback);
     }
 
     @Override
@@ -65,18 +85,18 @@ public class ForecastFragment extends Fragment {
     @Override
     public void onDestroy() {
         try {
-            final WeatherDownloadAsyncTask weatherDownloadTask = mWeatherDownloadAsyncTask;
-            final LoadSharedPreferencesAsyncTask loadSharedPrefsTask = mLoadSharedPreferencesAsyncTask;
-            mWeatherDownloadAsyncTask = null;
-            mLoadSharedPreferencesAsyncTask = null;
-            if (weatherDownloadTask != null) {
-                weatherDownloadTask.cancel(true);
+            mDestroyed = true;
+            if (mWeatherDownloadAsyncTask != null) {
+                mWeatherDownloadAsyncTask.cancel(true);
             }
-            if (loadSharedPrefsTask != null) {
-                loadSharedPrefsTask.cancel(true);
+            if (mLoadSharedPreferencesAsyncTask != null) {
+                mLoadSharedPreferencesAsyncTask.cancel(true);
             }
             if (mSharedPreferences != null) {
                 mSharedPreferences.unregisterOnSharedPreferenceChangeListener(mOnSharedPreferenceChangeListener);
+            }
+            if (mHandlerThread != null) {
+                mHandlerThread.quit();
             }
         } finally {
             super.onDestroy();
@@ -93,26 +113,67 @@ public class ForecastFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_refresh:
-                onRefreshOptionItemSelected();
+                onOptionItemRefreshSelected(false);
+                return true;
+            case R.id.action_show_location_on_map:
+                onOptionItemShowLocationOnMapSelected();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
 
-    private void onRefreshOptionItemSelected() {
-        if (mWeatherDownloadAsyncTask == null) {
-            if (mSharedPreferences == null) {
-                return;
+    private void onOptionItemRefreshSelected(boolean force) {
+        if (mSharedPreferences == null) {
+            return;
+        }
+        if (mWeatherDownloadAsyncTask == null || force) {
+            if (mWeatherDownloadAsyncTask != null) {
+                mWeatherDownloadAsyncTask.cancel(true);
             }
-            final String locationKey = getString(R.string.pref_location_key);
-            final String location = mSharedPreferences.getString(locationKey, "Kitchener,on");
+            final String location = mSharedPreferences.getString(mKeyLocation, "Kitchener,on");
             mWeatherDownloadAsyncTask = new MyWeatherDownloadAsyncTask(location, mMeasurementUnits);
             mWeatherDownloadAsyncTask.execute();
         }
     }
 
-    private void setWeatherForecast(String[] weatherForecasts) {
+    private void onOptionItemShowLocationOnMapSelected() {
+        mHandler.sendEmptyMessage(WHAT_SHOW_MAP);
+    }
+
+    private void doShowLocationOnMap() {
+        final LocationCoordinates coordinates = mLocationCoordinates;
+        if (coordinates == null) {
+            return;
+        }
+
+        final StringBuilder sb = new StringBuilder();
+        sb.append("geo:0,0?q=");
+        sb.append(coordinates.latitude);
+        sb.append(',');
+        sb.append(coordinates.longitude);
+
+        final String location;
+        if (mSharedPreferences == null) {
+            location = null;
+        } else {
+            final String locationKey = getString(R.string.pref_location_key);
+            location = mSharedPreferences.getString(locationKey, null);
+        }
+        if (location != null) {
+            sb.append('(').append(Uri.encode(location)).append(')');
+        }
+
+        final String uriString = sb.toString();
+        final Uri uri = Uri.parse(uriString);
+        final Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(uri);
+        startActivity(intent);
+    }
+
+
+    private void setWeatherForecast(String[] weatherForecasts, LocationCoordinates locationCoordinates) {
+        mLocationCoordinates = locationCoordinates;
         mForecastAdapter.clear();
         mForecastAdapter.addAll(weatherForecasts);
     }
@@ -144,6 +205,9 @@ public class ForecastFragment extends Fragment {
 
         @Override
         protected void onPostExecute(Result result) {
+            if (mDestroyed) {
+                return;
+            }
             getActivity().setProgressBarIndeterminateVisibility(false);
             mWeatherDownloadAsyncTask = null;
             if (result == null || isCancelled()) {
@@ -154,7 +218,15 @@ public class ForecastFragment extends Fragment {
                 case OK:
                     Log.i(LOG_TAG, "WeatherDownloadAsyncTask download completed successfully");
                     final String[] weatherData = getWeatherData();
-                    setWeatherForecast(weatherData);
+                    final String lat = getLocationLatitude();
+                    final String lon = getLocationLongitude();
+                    final LocationCoordinates locationCoordinates;
+                    if (lat == null || lon == null) {
+                        locationCoordinates = null;
+                    } else {
+                        locationCoordinates = new LocationCoordinates(lat, lon);
+                    }
+                    setWeatherForecast(weatherData, locationCoordinates);
                     break;
                 default:
                     final String errorMessage = getErrorMessage();
@@ -188,13 +260,12 @@ public class ForecastFragment extends Fragment {
 
         @Override
         protected void onPostExecute(SharedPreferences prefs) {
-            if (mLoadSharedPreferencesAsyncTask == null) {
-                return;
+            if (! mDestroyed) {
+                mLoadSharedPreferencesAsyncTask = null;
+                mSharedPreferences = prefs;
+                prefs.registerOnSharedPreferenceChangeListener(mOnSharedPreferenceChangeListener);
+                mOnSharedPreferenceChangeListener.onSharedPreferenceChanged(prefs, mKeyMeasurementUnits);
             }
-            mLoadSharedPreferencesAsyncTask = null;
-            mSharedPreferences = prefs;
-            prefs.registerOnSharedPreferenceChangeListener(mOnSharedPreferenceChangeListener);
-            mOnSharedPreferenceChangeListener.onSharedPreferenceChanged(prefs, mMeasurementUnitsKey);
         }
     }
 
@@ -202,7 +273,7 @@ public class ForecastFragment extends Fragment {
             implements SharedPreferences.OnSharedPreferenceChangeListener {
         @Override
         public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
-            if (key.equals(mMeasurementUnitsKey)) {
+            if (key.equals(mKeyMeasurementUnits)) {
                 final String value = prefs.getString(key, null);
                 final String valueImperial = getString(R.string.prefs_units_entry_value_imperial);
                 final MeasurementUnits origMeasurementUnits = mMeasurementUnits;
@@ -212,9 +283,40 @@ public class ForecastFragment extends Fragment {
                     mMeasurementUnits = MeasurementUnits.METRIC;
                 }
                 if (mMeasurementUnits != origMeasurementUnits) {
-                    onRefreshOptionItemSelected();
+                    onOptionItemRefreshSelected(true);
                 }
+            } else if (key.equals(mKeyLocation)) {
+                onOptionItemRefreshSelected(true);
             }
+        }
+    }
+
+    private static class LocationCoordinates {
+        public final String latitude;
+        public final String longitude;
+
+        public LocationCoordinates(String latitude, String longitude) {
+            if (latitude == null) {
+                throw new NullPointerException("latitude==null");
+            } else if (longitude == null) {
+                throw new NullPointerException("longitude==null");
+            }
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+    }
+
+    private class MyHandlerCallback implements Handler.Callback {
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (msg.what) {
+                case WHAT_SHOW_MAP:
+                    doShowLocationOnMap();
+                    break;
+                default:
+                    return false;
+            }
+            return true;
         }
     }
 }

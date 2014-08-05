@@ -31,6 +31,8 @@ public class WeatherDownloadAsyncTask extends
     private String mErrorMessage;
     private String[] mWeatherData;
     private int mNumDownloadedChars;
+    private String mLocationLatitude;
+    private String mLocationLongitude;
 
     public WeatherDownloadAsyncTask(String location, MeasurementUnits measurementUnits) {
         if (location == null) {
@@ -201,6 +203,15 @@ public class WeatherDownloadAsyncTask extends
         final JSONObject forecastJson = new JSONObject(forecastJsonStr);
         final JSONArray weatherArray = forecastJson.getJSONArray("list");
 
+        final JSONObject city = forecastJson.getJSONObject("city");
+        if (city != null) {
+            final JSONObject cityCoordinates = city.getJSONObject("coord");
+            if (cityCoordinates != null) {
+                mLocationLatitude = cityCoordinates.getString("lat");
+                mLocationLongitude = cityCoordinates.getString("lon");
+            }
+        }
+
         final List<String> resultStrs = new ArrayList<>();
         for(int i = 0; i < weatherArray.length(); i++) {
             // Get the JSON object representing the day
@@ -254,6 +265,33 @@ public class WeatherDownloadAsyncTask extends
      */
     public String[] getWeatherData() {
         return mWeatherData;
+    }
+
+    /**
+     * Returns the latitude of the location whose weather data was retrieved by doInBackground().
+     * <p>
+     * This method is designed to be called by {@link #onPostExecute} if and only if
+     * {@link Result#OK} is passed in.
+     * @return the latitude of the location whose weather data was retrieved by doInBackground();
+     * returns null no weather data was downloaded or the latitude could not be parsed.
+     * @see #getLocationLongitude
+     */
+    public String getLocationLatitude() {
+        return mLocationLatitude;
+    }
+
+
+    /**
+     * Returns the longitude of the location whose weather data was retrieved by doInBackground().
+     * <p>
+     * This method is designed to be called by {@link #onPostExecute} if and only if
+     * {@link Result#OK} is passed in.
+     * @return the longitude of the location whose weather data was retrieved by doInBackground();
+     * returns null no weather data was downloaded or the longitude could not be parsed.
+     * @see #getLocationLatitude
+     */
+    public String getLocationLongitude() {
+        return mLocationLongitude;
     }
 
     /**
