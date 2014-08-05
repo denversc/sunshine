@@ -168,7 +168,12 @@ public class ForecastFragment extends Fragment {
         final Uri uri = Uri.parse(uriString);
         final Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setData(uri);
-        startActivity(intent);
+
+        if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+            startActivity(intent);
+        } else {
+            Toast.makeText(getActivity(), R.string.msg_no_maps_app, Toast.LENGTH_LONG).show();
+        }
     }
 
 
