@@ -57,6 +57,7 @@ public class DetailFragment extends Fragment {
         }
         final Intent shareIntent = new Intent(Intent.ACTION_SEND);
         shareIntent.setType("text/plain");
+        shareIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
         shareIntent.putExtra(Intent.EXTRA_TEXT, mForecastText);
         mShareActionProvider.setShareIntent(shareIntent);
     }
