@@ -29,7 +29,9 @@ public class WeatherOpenHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-
+        db.execSQL("DROP TABLE IF EXISTS " + LocationEntry.TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + WeatherEntry.TABLE_NAME);
+        onCreate(db);
     }
 
     private static String generateCreateLocationTableSQL() {
