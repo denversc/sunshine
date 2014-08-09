@@ -21,7 +21,7 @@ public class WeatherContract {
         public static final String CONTENT_TYPE =
                 "vnd.android.cursor.dir/" + CONTENT_AUTHORITY + "/" + PATH_WEATHER;
         public static final String CONTENT_TYPE_ITEM =
-                "vnd.android.cursor.dir/" + CONTENT_AUTHORITY + "/" + PATH_WEATHER;
+                "vnd.android.cursor.item/" + CONTENT_AUTHORITY + "/" + PATH_WEATHER;
 
         public static final String TABLE_NAME = "weather";
 
@@ -127,7 +127,7 @@ public class WeatherContract {
         public static final String CONTENT_TYPE =
                 "vnd.android.cursor.dir/" + CONTENT_AUTHORITY + "/" + PATH_LOCATION;
         public static final String CONTENT_TYPE_ITEM =
-                "vnd.android.cursor.dir/" + CONTENT_AUTHORITY + "/" + PATH_LOCATION;
+                "vnd.android.cursor.item/" + CONTENT_AUTHORITY + "/" + PATH_LOCATION;
 
         public static final String TABLE_NAME = "location";
 

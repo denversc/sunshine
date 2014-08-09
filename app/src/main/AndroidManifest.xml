@@ -39,6 +39,11 @@
             >
         </activity>
 
+        <provider
+            android:authorities="org.sleepydragon.sunshine.app"
+            android:name=".data.WeatherProvider"
+            />
+
     </application>
 
 </manifest>
