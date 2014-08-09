@@ -19,7 +19,7 @@ public class WeatherContract {
 
         /**
          * Date to which this weather data pertains.
-         * Column type is INTEGER and encodes the date in milliseconds since the epoch.
+         * Column type is TEXT and is the human-friendly format of the date.
          */
         public static final String COL_DATE = "date";
 
@@ -32,13 +32,13 @@ public class WeatherContract {
 
         /**
          * The high temperature for the day.
-         * Column type is: FLOAT
+         * Column type is: REAL
          */
         public static final String COL_TEMP_HI = "temp_hi";
 
         /**
          * The low temperature for the day.
-         * Column type is: FLOAT
+         * Column type is: REAL
          */
         public static final String COL_TEMP_LO = "temp_lo";
 
@@ -56,13 +56,13 @@ public class WeatherContract {
 
         /**
          * The barometric pressure, as kilopascals (kPa)
-         * Column type is: FLOAT
+         * Column type is: REAL
          */
         public static final String COL_PRESSURE = "pressure";
 
         /**
          * The wind speed, in kilometers per hour (kPh)
-         * Column type is: FLOAT
+         * Column type is: REAL
          */
         public static final String COL_WIND_SPEED = "wind_speed";
 

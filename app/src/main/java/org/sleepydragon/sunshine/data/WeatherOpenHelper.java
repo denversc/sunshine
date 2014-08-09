@@ -37,10 +37,12 @@ public class WeatherOpenHelper extends SQLiteOpenHelper {
         sb.append("CREATE TABLE ").append(LocationEntry.TABLE_NAME);
         sb.append('(');
         sb.append(LocationEntry._ID).append(" INTEGER PRIMARY KEY, ");
-        sb.append(LocationEntry.COL_CITY_ID).append(" TEXT NOT NULL, ");
+        sb.append(LocationEntry.COL_CITY_ID).append(" TEXT UNIQUE NOT NULL, ");
         sb.append(LocationEntry.COL_DISPLAY_NAME).append(" TEXT, ");
         sb.append(LocationEntry.COL_LATITUDE).append(" REAL, ");
-        sb.append(LocationEntry.COL_LONGITUDE).append(" REAL");
+        sb.append(LocationEntry.COL_LONGITUDE).append(" REAL, ");
+        sb.append("UNIQUE (").append(LocationEntry.COL_CITY_ID)
+                .append(") ON CONFLICT IGNORE");
         sb.append(')');
         return sb.toString();
     }
