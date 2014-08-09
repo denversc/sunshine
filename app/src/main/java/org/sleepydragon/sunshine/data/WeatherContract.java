@@ -1,13 +1,27 @@
 package org.sleepydragon.sunshine.data;
 
+import android.content.ContentUris;
+import android.net.Uri;
 import android.provider.BaseColumns;
 
 public class WeatherContract {
+
+    public static final String CONTENT_AUTHORITY = "org.sleepydragon.sunshine.app";
+    public static final Uri BASE_CONTENT_URI = Uri.parse("content://" + CONTENT_AUTHORITY);
+    public static final String PATH_WEATHER = "weather";
+    public static final String PATH_LOCATION = "location";
 
     private WeatherContract() {
     }
 
     public static final class WeatherEntry implements BaseColumns {
+
+        public static final Uri CONTENT_URI = BASE_CONTENT_URI.buildUpon()
+                .appendPath(PATH_WEATHER).build();
+        public static final String CONTENT_TYPE =
+                "vnd.android.cursor.dir/" + CONTENT_AUTHORITY + "/" + PATH_WEATHER;
+        public static final String CONTENT_TYPE_ITEM =
+                "vnd.android.cursor.dir/" + CONTENT_AUTHORITY + "/" + PATH_WEATHER;
 
         public static final String TABLE_NAME = "weather";
 
@@ -75,9 +89,45 @@ public class WeatherContract {
         private WeatherEntry() {
         }
 
+        public static Uri buildUriFromId(long id) {
+            return ContentUris.withAppendedId(CONTENT_URI, id);
+        }
+
+        public static Uri buildUriFromCityId(String cityId) {
+            return CONTENT_URI.buildUpon().appendPath(cityId).build();
+        }
+
+        public static Uri buildUriFromCityIdAndStartDate(String cityId, String date) {
+            final Uri baseUri = buildUriFromCityId(cityId);
+            return baseUri.buildUpon().appendQueryParameter(COL_DATE, date).build();
+        }
+
+        public static Uri buildUriFromCityIdAndDate(String cityId, String date) {
+            final Uri baseUri = buildUriFromCityId(cityId);
+            return baseUri.buildUpon().appendPath(date).build();
+        }
+
+        public static String getCityIdFromUri(Uri uri) {
+            return uri.getPathSegments().get(1);
+        }
+
+        public static String getDateFromUri(Uri uri) {
+            return uri.getPathSegments().get(2);
+        }
+
+        public static String getStartDateFromUri(Uri uri) {
+            return uri.getQueryParameter(COL_DATE);
+        }
     }
 
     public static final class LocationEntry implements BaseColumns {
+
+        public static final Uri CONTENT_URI = BASE_CONTENT_URI.buildUpon()
+                .appendPath(PATH_LOCATION).build();
+        public static final String CONTENT_TYPE =
+                "vnd.android.cursor.dir/" + CONTENT_AUTHORITY + "/" + PATH_LOCATION;
+        public static final String CONTENT_TYPE_ITEM =
+                "vnd.android.cursor.dir/" + CONTENT_AUTHORITY + "/" + PATH_LOCATION;
 
         public static final String TABLE_NAME = "location";
 
@@ -107,6 +157,14 @@ public class WeatherContract {
 
 
         private LocationEntry() {
+        }
+
+        public static Uri buildUriFromId(long id) {
+            return ContentUris.withAppendedId(CONTENT_URI, id);
+        }
+
+        public static Uri buildUriFromCityId(String cityId) {
+            return CONTENT_URI.buildUpon().appendPath(cityId).build();
         }
     }
 
