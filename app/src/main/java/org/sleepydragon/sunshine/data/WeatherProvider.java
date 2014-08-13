@@ -5,6 +5,7 @@ import org.sleepydragon.sunshine.data.WeatherContract.LocationEntry;
 
 import android.content.ContentProvider;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.UriMatcher;
 import android.database.Cursor;
@@ -32,10 +33,11 @@ public class WeatherProvider extends ContentProvider {
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         final int queryType = mUriMatcher.match(uri);
+        final SQLiteDatabase db = mOpenHelper.getReadableDatabase();
         final Cursor cursor;
+
         switch (queryType) {
             case WEATHER:
-                final SQLiteDatabase db = mOpenHelper.getReadableDatabase();
                 cursor = db.query(WeatherEntry.TABLE_NAME, projection, selection, selectionArgs,
                         null, null, sortOrder);
                 break;
@@ -46,11 +48,17 @@ public class WeatherProvider extends ContentProvider {
                 cursor = null;
                 break;
             case LOCATION:
-                cursor = null;
+                cursor = db.query(LocationEntry.TABLE_NAME, projection, selection, selectionArgs,
+                        null, null, sortOrder);
                 break;
-            case LOCATION_ID:
-                cursor = null;
+            case LOCATION_ID: {
+                final long id = ContentUris.parseId(uri);
+                final String idSelection = LocationEntry._ID + "=?";
+                final String[] idSelectionArgs = new String[] {Long.toString(id)};
+                cursor = db.query(LocationEntry.TABLE_NAME, projection, idSelection,
+                        idSelectionArgs, null, null, sortOrder);
                 break;
+            }
             default:
                 throw new UnsupportedOperationException("unsupported URI: " + uri);
         }

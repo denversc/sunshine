@@ -73,20 +73,33 @@ public class TestWeatherProvider extends AndroidTestCase {
         final long weatherId = db.insert(WeatherEntry.TABLE_NAME, null, cvWeather);
         assertTrue(weatherId >= 0);
 
-        final Cursor curLocation = db.query(LocationEntry.TABLE_NAME, null, null, null, null, null,
-                null);
+        final ContentResolver cr = getContext().getContentResolver();
+
+        final Cursor curLocation = cr.query(LocationEntry.CONTENT_URI, null, null, null, null);
         assertEquals(curLocation.getCount(), 1);
         assertTrue(curLocation.moveToFirst());
+        assertColValue(curLocation, LocationEntry._ID, Long.toString(locationId));
         assertColValue(curLocation, LocationEntry.COL_CITY_ID, "TestCityID");
         assertColValue(curLocation, LocationEntry.COL_DISPLAY_NAME, "TestDisplayName");
         assertColValue(curLocation, LocationEntry.COL_LATITUDE, "-54.321");
         assertColValue(curLocation, LocationEntry.COL_LONGITUDE, "12.345");
         curLocation.close();
 
-        final ContentResolver cr = getContext().getContentResolver();
+        final Uri locationByIdQueryUri = LocationEntry.buildUriFromId(locationId);
+        final Cursor curLocationById = cr.query(locationByIdQueryUri, null, null, null, null);
+        assertEquals(curLocationById.getCount(), 1);
+        assertTrue(curLocationById.moveToFirst());
+        assertColValue(curLocationById, LocationEntry._ID, Long.toString(locationId));
+        assertColValue(curLocationById, LocationEntry.COL_CITY_ID, "TestCityID");
+        assertColValue(curLocationById, LocationEntry.COL_DISPLAY_NAME, "TestDisplayName");
+        assertColValue(curLocationById, LocationEntry.COL_LATITUDE, "-54.321");
+        assertColValue(curLocationById, LocationEntry.COL_LONGITUDE, "12.345");
+        curLocation.close();
+
         final Cursor curWeather = cr.query(WeatherEntry.CONTENT_URI, null, null, null, null);
         assertEquals(curWeather.getCount(), 1);
         assertTrue(curWeather.moveToFirst());
+        assertColValue(curWeather, WeatherEntry._ID, Long.toString(weatherId));
         assertColValue(curWeather, WeatherEntry.COL_DATE, "TestDate");
         assertColValue(curWeather, WeatherEntry.COL_DESCRIPTION, "TestDescription");
         assertColValue(curWeather, WeatherEntry.COL_ICON_ID, "TestIconId");
