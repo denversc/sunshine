@@ -17,6 +17,12 @@ public class TestWeatherProvider extends AndroidTestCase {
 
     private static final String DATABASE_NAME = "weather.db";
 
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        mContext.deleteDatabase(DATABASE_NAME);
+    }
+
     public void testGetType_Weather() {
         doTestGetType(WeatherEntry.CONTENT_URI, WeatherEntry.CONTENT_TYPE);
     }
@@ -44,35 +50,55 @@ public class TestWeatherProvider extends AndroidTestCase {
         assertEquals(expected, actual);
     }
 
-    public void testInsert() {
-        deleteDatabase();
+    private long insertLocation() {
+        return insertLocation(null);
+    }
 
-        // TODO: update to use content provider
+    private long insertLocation(String cityId) {
+        if (cityId == null) {
+            cityId = "TestCityID";
+        }
         final WeatherOpenHelper x = new WeatherOpenHelper(mContext);
         final SQLiteDatabase db = x.getReadableDatabase();
+        final ContentValues cv = new ContentValues();
+        cv.put(LocationEntry.COL_CITY_ID, cityId);
+        cv.put(LocationEntry.COL_DISPLAY_NAME, "TestDisplayName");
+        cv.put(LocationEntry.COL_LATITUDE, -54.321);
+        cv.put(LocationEntry.COL_LONGITUDE, 12.345);
+        final long id = db.insert(LocationEntry.TABLE_NAME, null, cv);
+        assertTrue(id >= 0);
+        return id;
+    }
 
-        final ContentValues cvLocation = new ContentValues();
-        cvLocation.put(LocationEntry.COL_CITY_ID, "TestCityID");
-        cvLocation.put(LocationEntry.COL_DISPLAY_NAME, "TestDisplayName");
-        cvLocation.put(LocationEntry.COL_LATITUDE, -54.321);
-        cvLocation.put(LocationEntry.COL_LONGITUDE, 12.345);
-        final long locationId = db.insert(LocationEntry.TABLE_NAME, null, cvLocation);
-        assertTrue(locationId >= 0);
+    private long insertWeather(long locationId) {
+        return insertWeather(locationId, null);
+    }
 
-        final ContentValues cvWeather = new ContentValues();
-        cvWeather.put(WeatherEntry.COL_DATE, "TestDate");
-        cvWeather.put(WeatherEntry.COL_DESCRIPTION, "TestDescription");
-        cvWeather.put(WeatherEntry.COL_ICON_ID, "TestIconId");
-        cvWeather.put(WeatherEntry.COL_LOCATION_ID, locationId);
-        cvWeather.put(WeatherEntry.COL_HUMIDITY, 12.34);
-        cvWeather.put(WeatherEntry.COL_PRESSURE, 23.45);
-        cvWeather.put(WeatherEntry.COL_TEMP_HI, 34.56);
-        cvWeather.put(WeatherEntry.COL_TEMP_LO, 45.67);
-        cvWeather.put(WeatherEntry.COL_WIND_SPEED, 56.78);
-        cvWeather.put(WeatherEntry.COL_WIND_DIRECTION, "NNW");
-        final long weatherId = db.insert(WeatherEntry.TABLE_NAME, null, cvWeather);
-        assertTrue(weatherId >= 0);
+    private long insertWeather(long locationId, String date) {
+        if (date == null) {
+            date = "TestDate";
+        }
+        final WeatherOpenHelper x = new WeatherOpenHelper(mContext);
+        final SQLiteDatabase db = x.getReadableDatabase();
+        final ContentValues cv = new ContentValues();
+        cv.put(WeatherEntry.COL_DATE, date);
+        cv.put(WeatherEntry.COL_DESCRIPTION, "TestDescription");
+        cv.put(WeatherEntry.COL_ICON_ID, "TestIconId");
+        cv.put(WeatherEntry.COL_LOCATION_ID, locationId);
+        cv.put(WeatherEntry.COL_HUMIDITY, 12.34);
+        cv.put(WeatherEntry.COL_PRESSURE, 23.45);
+        cv.put(WeatherEntry.COL_TEMP_HI, 34.56);
+        cv.put(WeatherEntry.COL_TEMP_LO, 45.67);
+        cv.put(WeatherEntry.COL_WIND_SPEED, 56.78);
+        cv.put(WeatherEntry.COL_WIND_DIRECTION, "NNW");
+        final long id = db.insert(WeatherEntry.TABLE_NAME, null, cv);
+        assertTrue(id >= 0);
+        return id;
+    }
 
+    public void testInsert() {
+        final long locationId = insertLocation();
+        final long weatherId = insertWeather(locationId);
         final ContentResolver cr = getContext().getContentResolver();
 
         final Cursor curLocation = cr.query(LocationEntry.CONTENT_URI, null, null, null, null);
@@ -113,8 +139,23 @@ public class TestWeatherProvider extends AndroidTestCase {
         curWeather.close();
     }
 
-    private void deleteDatabase() {
-        mContext.deleteDatabase(DATABASE_NAME);
+    public void testQuery_WEATHER_WITH_CITY_ID() {
+        final long locationId1 = insertLocation("City1");
+        final long locationId2 = insertLocation("City2");
+        final long weatherId11 = insertWeather(locationId1, "Date1");
+        final long weatherId12 = insertWeather(locationId1, "Date2");
+        final long weatherId21 = insertWeather(locationId2, "Date1");
+        final long weatherId22 = insertWeather(locationId2, "Date2");
+
+        final ContentResolver cr = mContext.getContentResolver();
+        final Uri uri = WeatherEntry.buildUriFromCityId("City1");
+        final String[] projection = null;
+        final String selection = null;
+        final String[] selectionArgs = null;
+        final String sortOrder = WeatherEntry.COL_DATE;
+        final Cursor cursor = cr.query(uri, projection, selection, selectionArgs, sortOrder);
+        assertEquals(2, cursor.getCount());
+        assertTrue(cursor.moveToFirst());
     }
 
     private static void assertColValue(Cursor cursor, String colName, long expected) {
