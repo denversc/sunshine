@@ -44,17 +44,9 @@ public class TestWeatherProvider extends AndroidTestCase {
         assertEquals(expected, actual);
     }
 
-    public void testCreate() {
-        // TODO: update to use content provider
-        deleteDatabase();
-        final WeatherOpenHelper x = new WeatherOpenHelper(mContext);
-        final SQLiteDatabase db = x.getReadableDatabase();
-        // make sure the tables are created
-        db.query(LocationEntry.TABLE_NAME, null, null, null, null, null, null);
-        db.query(WeatherEntry.TABLE_NAME, null, null, null, null, null, null);
-    }
-
     public void testInsert() {
+        deleteDatabase();
+
         // TODO: update to use content provider
         final WeatherOpenHelper x = new WeatherOpenHelper(mContext);
         final SQLiteDatabase db = x.getReadableDatabase();
@@ -91,8 +83,8 @@ public class TestWeatherProvider extends AndroidTestCase {
         assertColValue(curLocation, LocationEntry.COL_LONGITUDE, "12.345");
         curLocation.close();
 
-        final Cursor curWeather = db.query(WeatherEntry.TABLE_NAME, null, null, null, null, null,
-                null);
+        final ContentResolver cr = getContext().getContentResolver();
+        final Cursor curWeather = cr.query(WeatherEntry.CONTENT_URI, null, null, null, null);
         assertEquals(curWeather.getCount(), 1);
         assertTrue(curWeather.moveToFirst());
         assertColValue(curWeather, WeatherEntry.COL_DATE, "TestDate");

@@ -4,9 +4,11 @@ import org.sleepydragon.sunshine.data.WeatherContract.WeatherEntry;
 import org.sleepydragon.sunshine.data.WeatherContract.LocationEntry;
 
 import android.content.ContentProvider;
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.UriMatcher;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 
 public class WeatherProvider extends ContentProvider {
@@ -29,7 +31,33 @@ public class WeatherProvider extends ContentProvider {
 
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
-        return null;
+        final int queryType = mUriMatcher.match(uri);
+        final Cursor cursor;
+        switch (queryType) {
+            case WEATHER:
+                final SQLiteDatabase db = mOpenHelper.getReadableDatabase();
+                cursor = db.query(WeatherEntry.TABLE_NAME, projection, selection, selectionArgs,
+                        null, null, sortOrder);
+                break;
+            case WEATHER_WITH_LOCATION:
+                cursor = null;
+                break;
+            case WEATHER_WITH_LOCATION_AND_DATE:
+                cursor = null;
+                break;
+            case LOCATION:
+                cursor = null;
+                break;
+            case LOCATION_ID:
+                cursor = null;
+                break;
+            default:
+                throw new UnsupportedOperationException("unsupported URI: " + uri);
+        }
+
+        final ContentResolver cr = getContext().getContentResolver();
+        cursor.setNotificationUri(cr, uri);
+        return cursor;
     }
 
     @Override
